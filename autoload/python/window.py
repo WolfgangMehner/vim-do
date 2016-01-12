@@ -56,7 +56,8 @@ class Window():
         vim.command("setlocal buftype=nofile modifiable "+ \
                 "winfixheight winfixwidth")
         existing_content = self._buffer.contents()
-        self._buffer = VimBuffer(vim.buffers[self.getbuffernr()])
+        self._buffer = VimBuffer(vim.current.buffer)
+        self._buffernr = vim.current.buffer.number
         self._buffer.replace(existing_content)
         self.is_open = True
         self.creation_count += 1
@@ -116,3 +117,5 @@ class CommandWindow(Window):
         self.command('setlocal syntax=do_command_window')
         self.command('nnoremap <buffer> <cr> '+\
                 ':call do#ShowProcessFromCommandWindow()<CR>')
+
+# vim: expandtab: tabstop=4: shiftwidth=4
