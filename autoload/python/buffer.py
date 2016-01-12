@@ -18,8 +18,13 @@ class VimBuffer:
         else:
             to_write = str(msg).split('\n')
 
-        if len(to_write) == 1 and to_write[0] == "":
-            return (last_line, last_line)
+        if len(to_write) == 0 or len(to_write) == 1 and to_write[0] == "":
+            # nothing to write, check overwrite
+            if overwrite:
+                self._buffer[:] = None
+                return (1, 1)
+            else:
+                return (last_line, last_line)
 
         if overwrite or self.is_empty():
             self._buffer[:] = to_write
@@ -131,4 +136,4 @@ class HiddenBuffer:
     def is_empty(self):
         return not self._buffer
 
-
+# vim: expandtab: tabstop=4: shiftwidth=4
