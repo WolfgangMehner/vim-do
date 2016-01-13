@@ -28,9 +28,12 @@ class AsyncProcessReader(threading.Thread):
         fds = [self.__process.stdout.fileno(), self.__process.stderr.fileno()]
         streams = [self.__process.stdout, self.__process.stderr]
 
+        # while the process is still alive ...
         while self.__process.poll() is None:
+            # wait for one of the file descriptors to be ready for reading
             fdsin, _, _ = select.select(fds, [], [])
             for fd in fdsin:
+                # read a line from the file descriptor
                 output = [None, None]
                 ind = fds.index(fd)
                 stream = streams[ind]
@@ -38,6 +41,17 @@ class AsyncProcessReader(threading.Thread):
                 if len(s) > 0:
                     output[ind] = s
                     yield output
+        # after the process has finished ...
+        for ind, stream in enumerate( streams ):
+            # read the rest of the output from the file descriptor
+            output = [None, None]
+            while True:
+                s = stream.readline()
+                if len(s) > 0:
+                    output[ind] = s
+                    yield output
+                else:
+                    break
 
 
 class ProcessPool:
@@ -79,3 +93,4 @@ class ProcessPool:
             for t in self.__threads:
                 t.join(1000)
 
+# vim: expandtab: tabstop=4: shiftwidth=4
