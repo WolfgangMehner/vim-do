@@ -15,20 +15,20 @@ let s:do_refresh_key = "<C-L>"
 let s:do_update_time = 500
 let s:do_auto_show_process_window = 1
 
+""
 " Load Python script
-if filereadable($VIMRUNTIME."/plugin/python/do.py")
-  pyfile $VIMRUNTIME/plugin/do.py
-elseif filereadable($HOME."/.vim/plugin/python/do.py")
-  pyfile $HOME/.vim/plugin/python/do.py
-else
-  " when we use pathogen for instance
-  let $CUR_DIRECTORY=expand("<sfile>:p:h")
+"
+" Search relative to this file.
+let $CUR_DIRECTORY=expand("<sfile>:p:h")
 
-  if filereadable($CUR_DIRECTORY."/python/do.py")
-    pyfile $CUR_DIRECTORY/python/do.py
-  else
-    call confirm('vdebug.vim: Unable to find do.py. Place it in either your home vim directory or in the Vim runtime directory.', 'OK')
-  endif
+if filereadable($CUR_DIRECTORY."/python/do.py")
+    if has("python")
+        pyfile $CUR_DIRECTORY/python/do.py
+    elseif has("python3")
+        py3file $CUR_DIRECTORY/python/do.py
+    endif
+else
+    call confirm('do.vim: Unable to find autoload/python/do.py. Place it in either your home vim directory or in the Vim runtime directory.', 'OK')
 endif
 
 ""
@@ -121,9 +121,7 @@ function! do#Execute(command, ...)
         call do#error("Supplied command is empty")
     else
         let s:previous_command = l:command
-python <<_EOF_
-do_async.execute(vim.eval("l:command"), int(vim.eval("l:quiet")) == 1)
-_EOF_
+        python do_async.execute(vim.eval("l:command"), int(vim.eval("l:quiet")) == 1)
     endif
 endfunction
 
@@ -144,9 +142,7 @@ endfunction
 " @param string file_path The path to the file to write log information
 "
 function! do#EnableLogger(file_path)
-python <<_EOF_
-do_async.enable_logger(vim.eval("a:file_path"))
-_EOF_
+    python do_async.enable_logger(vim.eval("a:file_path"))
 endfunction
 
 ""
@@ -249,3 +245,5 @@ endfunction
 " Initialize do
 python do_async = Do()
 autocmd VimLeavePre * python do_async.stop()
+
+" vim: expandtab: tabstop=4: shiftwidth=4
