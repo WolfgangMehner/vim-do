@@ -24,14 +24,20 @@ class Do:
     def __del__(self):
         self.stop()
 
-    def execute(self, cmd, quiet = False):
+    def execute(self, cmd, quiet = False, external = False, split_output = False):
         pid = self.__process_pool.execute(cmd)
         log("Started command with pid %i: %s" %(pid, cmd))
-        process = self.__processes.add(cmd, pid)
-        self.__process_renderer.add_process(process, quiet)
+        process = Process(cmd, pid = pid, external = external, split_output = split_output)
+        self.__processes.add(process, pid)
+        self.__process_renderer.add_process(process, quiet or external)
 
         self.__assign_autocommands()
         self.check()
+
+        return pid
+
+    def get_by_pid(self, pid):
+        return self.__processes.get_by_pid(str(pid))
 
     def reload_options(self):
         Options.reload()
@@ -108,10 +114,8 @@ class ProcessCollection:
     def __init__(self):
         self.__processes = {}
 
-    def add(self, command, pid):
-        process = Process(command, pid)
+    def add(self, process, pid):
         self.__processes[pid] = process
-        return process
 
     def get_by_pid(self, pid):
         return next((p for p in self.__processes.values() if p.get_pid() == pid), None)
@@ -136,17 +140,24 @@ class ProcessCollection:
             process.kill()
 
 class Process:
-    def __init__(self, command, pid):
+    def __init__(self, command, pid, external = False, split_output = False):
         self.__command = command
         self.__pid = str(pid)
         self.__start_time = time.time()
-        self.__output = Output()
+        self.__external = external
+        if split_output:
+            self.__output = SplitOutput()
+        else:
+            self.__output = Output()
         self.__exit_code = None
         self.__time = None
 
     def mark_as_complete(self, exit_code):
         self.__exit_code = str(exit_code)
         self.__time = round((time.time() - self.__start_time) * 1000)
+
+        if self.__external:
+            vim.command('call do#HookProcessFinished(%s,%s)' % ( self.__pid, self.__exit_code ))
 
     def has_finished(self):
         return self.__exit_code is not None
@@ -178,6 +189,9 @@ class Process:
     def name(self):
         return "DoOutput(%s)" % self.__pid
 
+    def is_external(self):
+        return self.__external
+
     def kill(self):
         try:
             os.kill(int(self.__pid), signal.SIGTERM)
@@ -203,3 +217,34 @@ class Output:
             self.__output.append(stdout)
         if stderr is not None:
             self.__output.append("E> %s" % stderr)
+
+class SplitOutput:
+    def __init__(self):
+        self.__output_std = []
+        self.__output_err = []
+
+    def all(self):
+        if len(self.__output_err) == 0:
+            return self.__output_std
+        else:
+            return self.__output_std + [ 'E> Errors:' ] + self.__output_err
+
+    def all_std(self):
+        return self.__output_std
+
+    def all_err(self):
+        return self.__output_err
+
+    def __len__(self):
+        return len(self.__output_std)
+
+    def from_line(self, line):
+        return self.__output_std[line:]
+
+    def append(self, stdout, stderr):
+        if stdout is not None:
+            self.__output_std.append(stdout)
+        if stderr is not None:
+            self.__output_err.append(stderr)
+
+# vim: expandtab: tabstop=4: shiftwidth=4

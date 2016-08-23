@@ -137,6 +137,134 @@ function! do#ExecuteSelection()
 endfunction
 
 ""
+" Keeps records on external processes started via do#ExecuteExternal .
+"
+let s:external_processes = {
+            \ 'by_id'  : {},
+            \ 'by_pid' : {},
+            \ }
+
+""
+" Default callback for external processes
+"
+" This is the default callback for external processes. It always excepts all
+" parameters and does nothing.
+"
+" @param string a:1 The ID of the external process
+" @param number or string a:2 The exit code of the external process
+"
+function! s:EmptyCallback(...)
+endfunction
+
+""
+" Start an external process
+"
+" Start an external process with the following options, which are given in a
+" Dict with fields:
+" - id (string): a user-defined ID
+" - split_output (integer): whether the output is to be split into stdout and
+"   stderr, the default is not to split the output
+" - callback (Funcref): a function to be called after the process is finished:
+"     function s:Callback(pid,exit_code)
+"       " ...
+"     endfunction
+"     options.callback = Function("s:Callback")
+"
+" @param string command The command to run
+" @param dict options The options as a dictionary
+"
+function! do#ExecuteExternal(command, options)
+    let record = {
+                \ 'id'           : get ( a:options, 'id', '' ),
+                \ 'command'      : a:command,
+                \ 'callback'     : get ( a:options, 'callback', function('s:EmptyCallback') ),
+                \ 'split_output' : get ( a:options, 'split_output', 0 ),
+                \ 'status'       : 'new',
+                \ 'pid'          : -1,
+                \ 'exit_code'    : -1,
+                \ }
+    if record.id != ''
+        let s:external_processes.by_id[record.id] = record
+    endif
+
+    let l:command = a:command
+    let l:pid     = -1
+    let l:split   = record.split_output
+    if empty(l:command)
+        "TODO: log
+        return 0
+    endif
+    let l:command = Strip(l:command)
+    if empty(l:command)
+        "TODO: log
+        return 0
+    else
+        let l:pid = pyeval ( 'do_async.execute(vim.eval("l:command"), external = True, split_output = vim.eval("l:split") == 1 )' )
+        let record.status = 'running'
+        let record.pid    = l:pid
+        let s:external_processes.by_pid[record.pid] = record
+    endif
+endfunction
+
+""
+" Get a previously started external process
+"
+" Returns the record of the last external process with the given ID. The
+" record is a Dict with fields:
+" - id (string): the user-defined ID
+" - command (string): the command
+" - split_output (integer): whether the output is split
+" - status (string): "new", "running", "finished", or "failed"
+" - pid (number): only valid while the status is "running"
+" - exit_code (number): only valid if the status is "finished"
+"
+" If a record with this ID does not exist, a record with the field 'status'
+" set to "failed" is returned.
+"
+" @param string id The ID of the process
+"
+function! do#GetExternal(id)
+    if ! has_key ( s:external_processes.by_id, a:id )
+        return { 'status' : 'failed', }
+    endif
+    return s:external_processes.by_id[a:id]
+endfunction
+
+""
+" Internal use: An external process is finished
+"
+" This function is called by Python after an external process finished. It
+" should not be called by a user.
+"
+" @param number pid The PID of the process, for identification
+" @param number exit_code The exit code
+"
+function! do#HookProcessFinished(pid,exit_code)
+    if has_key ( s:external_processes.by_pid, a:pid )
+        let record = s:external_processes.by_pid[a:pid]
+        let record.status    = 'finished'
+        let record.exit_code = a:exit_code
+        call remove ( s:external_processes.by_pid, a:pid )
+
+        call call ( record.callback, [ record.id, record.exit_code ] )
+
+        if record.split_output
+            " :TODO:14.07.2016 19:03:WM: only get the output when requested,
+            " this runs during an autocmd and takes to much time
+            let l = pyeval ( 'do_async.get_by_pid('.record.pid.').output().all_std()' )
+            let record.output_std = join ( l, "" )
+            let l = pyeval ( 'do_async.get_by_pid('.record.pid.').output().all_err()' )
+            let record.output_err = join ( l, "" )
+        else
+            " :TODO:14.07.2016 19:03:WM: only get the output when requested,
+            " this runs during an autocmd and takes to much time
+            let l = pyeval ( 'do_async.get_by_pid('.record.pid.').output().all()' )
+            let record.output = join ( l, "" )
+        endif
+    endif
+endfunction
+
+""
 " Enable the file logger for debugging purposes.
 "
 " @param string file_path The path to the file to write log information
