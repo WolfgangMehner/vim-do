@@ -45,7 +45,7 @@ class Do:
     def mark_process_window_as_closed(self):
         try:
             self.__process_renderer.destroy_process_window()
-        except Exception, e:
+        except Exception as e:
             log("Error: %s" % str(e))
 
     def show_process_from_command_window(self):
