@@ -75,7 +75,7 @@ class ProcessWindowHeaderFormat:
                 self.__process.get_status(),
                 self.__formatted_time(),
                 self.__process.get_pid())
-        max_length = max(map(len, values)) + 12
+        max_length = max(list(map(len, values))) + 12
 
         title = "=" * max_length + "\n"
         title += " [command] %s\n" % values[0]

@@ -1,10 +1,13 @@
-import Queue
 import threading
 import subprocess
-import shlex
 import select
+import sys
 from utils import log
-import os
+
+if sys.version[0] == '2':
+    import Queue as queue
+else:
+    import queue as queue
 
 class AsyncProcessReader(threading.Thread):
     def __init__(self, process, output_q):
@@ -57,7 +60,7 @@ class AsyncProcessReader(threading.Thread):
 class ProcessPool:
     def __init__(self):
         self.__threads = []
-        self.__output_q = Queue.Queue(0)
+        self.__output_q = queue.Queue(0)
 
     def execute(self, cmd):
         subproc = subprocess.Popen(cmd, shell=True,
@@ -80,7 +83,7 @@ class ProcessPool:
         try:
             for result in iter(self.__output_q.get_nowait, None):
                 results.append(result)
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         return results

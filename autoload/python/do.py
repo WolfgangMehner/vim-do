@@ -118,7 +118,7 @@ class ProcessCollection:
         self.__processes[pid] = process
 
     def get_by_pid(self, pid):
-        return next((p for p in self.__processes.values() if p.get_pid() == pid), None)
+        return next((p for p in list(self.__processes.values()) if p.get_pid() == pid), None)
 
     def update(self, pid, exit_status, stdout, stderr):
         process = self.__processes[pid]
@@ -133,7 +133,7 @@ class ProcessCollection:
         return len(self.get_running()) == 0
 
     def get_running(self):
-        return filter(lambda p: p.is_running(), self.__processes.values())
+        return [p for p in list(self.__processes.values()) if p.is_running()]
 
     def kill_all(self):
         for process in self.get_running():

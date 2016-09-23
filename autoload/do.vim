@@ -90,7 +90,11 @@ endfunction
 " function will reload them.
 "
 function! do#ReloadOptions()
-    python do_async.reload_options()
+    if has("python")
+        python do_async.reload_options()
+    elseif has("python3")
+        python3 do_async.reload_options()
+    endif
 endfunction
 
 ""
@@ -121,7 +125,11 @@ function! do#Execute(command, ...)
         call do#error("Supplied command is empty")
     else
         let s:previous_command = l:command
-        python do_async.execute(vim.eval("l:command"), int(vim.eval("l:quiet")) == 1)
+        if has("python")
+            python do_async.execute(vim.eval("l:command"), int(vim.eval("l:quiet")) == 1)
+        elseif has("python3")
+            python3 do_async.execute(vim.eval("l:command"), int(vim.eval("l:quiet")) == 1)
+        endif
     endif
 endfunction
 
@@ -270,7 +278,11 @@ endfunction
 " @param string file_path The path to the file to write log information
 "
 function! do#EnableLogger(file_path)
-    python do_async.enable_logger(vim.eval("a:file_path"))
+    if has("python")
+        python do_async.enable_logger(vim.eval("a:file_path"))
+    elseif has("python3")
+        python3 do_async.enable_logger(vim.eval("a:file_path"))
+    endif
 endfunction
 
 ""
@@ -279,7 +291,11 @@ endfunction
 " The command window details currently running and finished processes.
 "
 function! do#ToggleCommandWindow()
-    python do_async.toggle_command_window()
+    if has("python")
+        python do_async.toggle_command_window()
+    elseif has("python3")
+        python3 do_async.toggle_command_window()
+    endif
 endfunction
 
 ""
@@ -288,7 +304,11 @@ endfunction
 " Executed automatically via an autocommand.
 "
 function! do#MarkCommandWindowAsClosed()
-    python do_async.mark_command_window_as_closed()
+    if has("python")
+        python do_async.mark_command_window_as_closed()
+    elseif has("python3")
+        python3 do_async.mark_command_window_as_closed()
+    endif
 endfunction
 
 ""
@@ -297,14 +317,22 @@ endfunction
 " Executed automatically via an autocommand.
 "
 function! do#MarkProcessWindowAsClosed()
-    python do_async.mark_process_window_as_closed()
+    if has("python")
+        python do_async.mark_process_window_as_closed()
+    elseif has("python3")
+        python3 do_async.mark_process_window_as_closed()
+    endif
 endfunction
 
 ""
 " Trigger selection of a process in the command window.
 "
 function! do#ShowProcessFromCommandWindow()
-    python do_async.show_process_from_command_window()
+    if has("python")
+        python do_async.show_process_from_command_window()
+    elseif has("python3")
+        python3 do_async.show_process_from_command_window()
+    endif
 endfunction
 
 ""
@@ -328,12 +356,21 @@ function! do#AssignAutocommands()
     execute "nnoremap <silent> " . do#get("do_refresh_key") . " :call do#nop()<CR>"
     execute "inoremap <silent> " . do#get("do_refresh_key") . ' <C-O>:call do#nop()<CR>'
     augroup vim_do
-        au CursorHold * python do_async.check()
-        au CursorHoldI * python do_async.check()
-        au CursorMoved * python do_async.check()
-        au CursorMovedI * python do_async.check()
-        au FocusGained * python do_async.check()
-        au FocusLost * python do_async.check()
+        if has("python")
+            au CursorHold   * python do_async.check()
+            au CursorHoldI  * python do_async.check()
+            au CursorMoved  * python do_async.check()
+            au CursorMovedI * python do_async.check()
+            au FocusGained  * python do_async.check()
+            au FocusLost    * python do_async.check()
+        elseif has("python3")
+            au CursorHold   * python3 do_async.check()
+            au CursorHoldI  * python3 do_async.check()
+            au CursorMoved  * python3 do_async.check()
+            au CursorMovedI * python3 do_async.check()
+            au FocusGained  * python3 do_async.check()
+            au FocusLost    * python3 do_async.check()
+        endif
     augroup END
     let &updatetime=do#get("do_update_time")
 endfunction
@@ -371,7 +408,12 @@ function! s:getVisualSelection()
 endfunction
 
 " Initialize do
-python do_async = Do()
-autocmd VimLeavePre * python do_async.stop()
+if has("python")
+    python do_async = Do()
+    autocmd VimLeavePre * python do_async.stop()
+elseif has("python3")
+    python3 do_async = Do()
+    autocmd VimLeavePre * python3 do_async.stop()
+endif
 
 " vim: expandtab: tabstop=4: shiftwidth=4
